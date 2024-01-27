@@ -12,7 +12,7 @@ struct ErrorResponse {
 	message string
 }
 
-struct PingRequest {
+struct AuthRequest {
 	api_key string @[json: 'apikey']
 	secret_api_key string @[json: 'secretapikey']
 }
@@ -54,10 +54,6 @@ struct EditRequest {
 	content string
 }
 
-fn PingRequest.new(api_key string, secret_api_key string) PingRequest {
-	return PingRequest{api_key, secret_api_key}
-}
-
 struct Api {
 	domain string
 	api_key string
@@ -91,7 +87,7 @@ fn (a Api) send_request(endpoint string, body string) !string {
 }
 
 pub fn (a Api) ping() !string {
-	ping := PingRequest.new(a.api_key, a.secret_api_key)
+	ping := AuthRequest{a.api_key, a.secret_api_key}
 	res := a.send_request('ping', json.encode(ping)) or {
 		return err
 	}
@@ -108,7 +104,7 @@ pub fn (a Api) ping() !string {
 }
 
 pub fn (a Api) retrieve_records(record_type string) ![]DnsRecord {
-	ping := PingRequest.new(a.api_key, a.secret_api_key)
+	ping := AuthRequest{a.api_key, a.secret_api_key}
 	url := 'dns/retrieveByNameType/${a.domain}/${record_type}'
 	res := a.send_request(url, json.encode(ping)) or {
 		return err
