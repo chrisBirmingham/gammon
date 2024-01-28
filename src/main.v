@@ -1,8 +1,8 @@
 module main
 
 import cli
-import os
 import json
+import os
 import porkbun
 import v.vmod
 
@@ -34,6 +34,8 @@ fn read_config_file(config_file string) Config {
 
 fn run_application(cmd cli.Command) ! {
 	config_file := cmd.flags.get_string('file')!
+	mut ip_address := cmd.flags.get_string('ip')!
+
 	config := read_config_file(config_file)
 
 	api := porkbun.Api.new(
@@ -42,12 +44,16 @@ fn run_application(cmd cli.Command) ! {
 		config.secret_api_key
 	)
 
-	ip_address := api.ping() or {
-		die('Failed to get IP address. Reason: ${err}')
+	if ip_address == '' {
+		println('Fetching public IP address')
+		ip_address = api.ping() or {
+			die('Failed to get IP address. Reason: ${err}')
+		}
 	}
 
+	println('Retrieving A DNS record')
 	records := api.retrieve_records('A') or {
-		die('Failed to retrive Domain A records. Reason: ${err}')
+		die('Failed to retrive Domain A record. Reason: ${err}')
 	}
 
 	if records.len > 1 {
@@ -96,6 +102,14 @@ fn main() {
 		abbrev: 'f'
 		description: 'Path to config file'
 		default_value: ['/etc/${mod.name}/config.yaml']
+	})
+
+	app.add_flag(cli.Flag{
+		flag: .string
+		required: false
+		name: 'ip'
+		description: 'Bypass IP address lookup and set IP to option provided'
+		default_value: ['']
 	})
 
 	app.setup()
