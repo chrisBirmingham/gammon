@@ -75,7 +75,7 @@ fn run_application(cmd cli.Command) ! {
 	}
 
 	println('IP addresses are different. Updating')
-	api.edit_record('A', ip_address) or {
+	api.edit_record(record.get_id(), record.get_type(), ip_address) or {
 		die('Failed to update IP address. Reason: ${err}')
 	}
 	println('Successfully updated IP address')

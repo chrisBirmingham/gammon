@@ -3,7 +3,7 @@ module porkbun
 import json
 import net.http
 
-const api_url = 'https://porkbun.com/api/json/v3'
+const api_url = 'https://api-ipv4.porkbun.com/api/json/v3'
 
 enum Status {
 	success
@@ -39,6 +39,14 @@ struct DnsRecord {
 	content string @[required]
 }
 
+pub fn (d DnsRecord) get_id() string {
+	return d.id
+}
+
+pub fn (d DnsRecord) get_type() string {
+	return d.record_type
+}
+
 pub fn (d DnsRecord) get_ip_address() string {
 	return d.content
 }
@@ -58,6 +66,7 @@ struct CreateRequest {
 struct EditRequest {
 	api_key string @[json: 'apikey']
 	secret_api_key string @[json: 'secretapikey']
+	record_type string @[json: 'type']
 	content string
 }
 
@@ -151,12 +160,13 @@ pub fn (a Api) create_record(record_type string, content string) ! {
 	}
 }
 
-pub fn (a Api) edit_record(record_type string, content string) ! {
-	url := 'dns/editByNameType/${a.domain}/${record_type}'
+pub fn (a Api) edit_record(id string, record_type string, content string) ! {
+	url := 'dns/edit/${a.domain}/${id}'
 
 	edit_req := EditRequest{
 		a.api_key
 		a.secret_api_key
+		record_type
 		content
 	}
 
