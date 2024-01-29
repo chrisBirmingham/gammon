@@ -3,6 +3,8 @@ module porkbun
 import json
 import net.http
 
+const api_url = 'https://porkbun.com/api/json/v3'
+
 enum Status {
 	success
 	error
@@ -28,13 +30,13 @@ struct PingResponse {
 }
 
 struct DnsRecord {
-	id string
-	name string
-	record_type string @[json: 'type']
-	ttl string
+	id string @[required]
+	name string @[required]
+	record_type string @[json: 'type'; required]
+	ttl string @[required]
 	prio string
 	notes string
-	content string
+	content string @[required]
 }
 
 pub fn (d DnsRecord) get_ip_address() string {
@@ -78,7 +80,7 @@ fn (a Api) get_error_response(body string) string {
 }
 
 fn (a Api) send_request(endpoint string, body string) !string {
-	url := 'https://porkbun.com/api/json/v3/${endpoint}'
+	url := '${api_url}/${endpoint}'
 
 	res := http.post_json(url, body) or {
 		return error('Failed to contact api endpoint ${err}')

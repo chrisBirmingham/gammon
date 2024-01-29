@@ -101,7 +101,7 @@ fn main() {
 		name: 'file'
 		abbrev: 'f'
 		description: 'Path to config file'
-		default_value: ['/etc/${mod.name}/config.yaml']
+		default_value: ['/etc/{gammon}.json']
 	})
 
 	app.add_flag(cli.Flag{

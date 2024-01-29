@@ -10,6 +10,7 @@ $(EXE): $(SRC)
 
 install: $(EXE)
 	cp $(EXE) /usr/local/bin
+	cp config/$(EXE).json /etc
 
 clean:
 	rm $(EXE)
