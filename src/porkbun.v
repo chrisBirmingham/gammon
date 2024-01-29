@@ -3,13 +3,18 @@ module porkbun
 import json
 import net.http
 
+enum Status {
+	success
+	error
+}
+
 struct StatusResponse {
-	status string
+	status Status @[required]
 }
 
 struct ErrorResponse {
-	status string
-	message string
+	status Status @[required]
+	message string @[required]
 }
 
 struct AuthRequest {
@@ -18,8 +23,8 @@ struct AuthRequest {
 }
 
 struct PingResponse {
-	status string
-	ip string @[json: 'yourIp']
+	status Status @[required]
+	ip string @[json: 'yourIp'; required]
 }
 
 struct DnsRecord {
@@ -37,8 +42,8 @@ pub fn (d DnsRecord) get_ip_address() string {
 }
 
 struct RetrieveResponse {
-	status string
-	records []DnsRecord
+	status Status @[required]
+	records []DnsRecord @[required]
 }
 
 struct CreateRequest {
@@ -96,7 +101,7 @@ pub fn (a Api) ping() !string {
 		return error('Failed to decode api response. Reason: ${err}')
 	}
 
-	if json_res.status == 'ERROR' {
+	if json_res.status == .error {
 		error('Received an error status while getting IP address')
 	}
 
@@ -114,7 +119,7 @@ pub fn (a Api) retrieve_records(record_type string) ![]DnsRecord {
 		return error('Failed to decode api response. Reason: ${err}')
 	}
 
-	if json_res.status == 'ERROR' {
+	if json_res.status == .error {
 		error('Received an error status while getting DNS Records')
 	}
 
@@ -139,7 +144,7 @@ pub fn (a Api) create_record(record_type string, content string) ! {
 		return error('Failed to decode api response. Reason: ${err}')
 	}
 
-	if json_res.status == 'ERROR' {
+	if json_res.status == .error {
 		error('Received an error status while creating DNS Record')
 	}
 }
@@ -161,7 +166,7 @@ pub fn (a Api) edit_record(record_type string, content string) ! {
 		return error('Failed to decode api response. Reason: ${err}')
 	}
 
-	if json_res.status == 'ERROR' {
+	if json_res.status == .error {
 		error('Received an error status while getting editing DNS Record')
 	}
 }
