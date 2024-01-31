@@ -70,7 +70,7 @@ struct EditRequest {
 	content string
 }
 
-struct Api {
+pub struct Api {
 	domain string
 	api_key string
 	secret_api_key string
