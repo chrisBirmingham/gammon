@@ -63,10 +63,11 @@ fn run_application(cmd cli.Command) ! {
 	mut ip_address := cmd.flags.get_string('ip')!
 	log_file := cmd.flags.get_string('log')!
 
-	mut logger := logging.Logger.new(.info)
+	mut logger := logging.Logger.default_logger()
 
 	if log_file != '' {
-		logger.set_log_file(log_file)
+		file_handler := logging.FileHandler.new(log_file)
+		logger.add_handler(file_handler)
 	}
 
 	config := read_config_file(config_file, mut logger)
