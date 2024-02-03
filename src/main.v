@@ -59,7 +59,7 @@ fn read_config_file(config_file string, mut logger logging.Logger) Config {
 }
 
 fn run_application(cmd cli.Command) ! {
-	config_file := cmd.flags.get_string('file')!
+	config_file := cmd.flags.get_string('config-file')!
 	mut ip_address := cmd.flags.get_string('ip')!
 	log_file := cmd.flags.get_string('log')!
 
@@ -105,11 +105,10 @@ fn main() {
 
 	app.add_flag(cli.Flag{
 		flag: .string
-		required: false
-		name: 'file'
-		abbrev: 'f'
+		required: true
+		name: 'config-file'
+		abbrev: 'c'
 		description: 'Path to config file'
-		default_value: ['/etc/${mod.name}.json']
 	})
 
 	app.add_flag(cli.Flag{
