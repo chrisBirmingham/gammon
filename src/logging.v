@@ -15,11 +15,11 @@ fn (mut s StdoutHandler) write(message string) {
 	println(message)
 }
 
-pub struct FileHandler {
+struct FileHandler {
 	mut: fp os.File
 }
 
-pub fn FileHandler.new(log_path string) FileHandler {
+fn FileHandler.new(log_path string) FileHandler {
 	mut fp := os.open_append(log_path) or {
 		panic(err)
 	}
@@ -34,27 +34,23 @@ fn (mut f FileHandler) write(message string) {
 }
 
 pub struct Logger {
-	mut: handlers []LogHandler
+	mut: handler LogHandler
 }
 
-pub fn Logger.default_logger() Logger {
-	return Logger{[StdoutHandler{}]}
+pub fn Logger.stdout() Logger {
+	return Logger{StdoutHandler{}}
 }
 
-pub fn (mut l Logger) add_handler(handler LogHandler) {
-	l.handlers << handler
+pub fn Logger.file(file_path string) Logger {
+	return Logger{FileHandler.new(file_path)}
 }
 
 pub fn (mut l Logger) info(message string) {
-	for mut handler in l.handlers {
-		handler.write(message)
-	}
+	l.handler.write(message)
 }
 
 @[noreturn]
 pub fn (mut l Logger) die(message string) {
-	for mut handler in l.handlers {
-		handler.write(message)
-	}
+	l.handler.write(message)
 	exit(exit_failure)
 }

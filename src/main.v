@@ -75,11 +75,11 @@ fn get_ip_address(api porkbun.Api, mut logger logging.Logger) string {
 fn run_application(cmd cli.Command) ! {
 	config_file := cmd.flags.get_string('config-file')!
 	log_file := cmd.flags.get_string('log')!
-	mut logger := logging.Logger.default_logger()
 
-	if log_file != '' {
-		file_handler := logging.FileHandler.new(log_file)
-		logger.add_handler(file_handler)
+	mut logger := if log_file != '' {
+		logging.Logger.file(log_file)
+	} else {
+		logging.Logger.stdout()
 	}
 
 	config := read_config_file(config_file, mut logger)
