@@ -9,7 +9,8 @@ $(EXE): $(SRC)
 	v . -prod
 
 install: $(EXE)
-	cp $(EXE) /usr/local/bin
+	install $(EXE) /usr/local/bin
+	ln -sf /usr/local/bin/gammond /usr/local/bin/$(EXE) 
 
 clean:
 	rm $(EXE)

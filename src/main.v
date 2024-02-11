@@ -5,14 +5,20 @@ import json
 import logging
 import os
 import porkbun
+import time
 import v.vmod
 
 const exit_failure = 1
+const service_name = 'gammond'
 
 struct Config {
 	domain string @[required]
 	api_key string @[required]
 	secret_api_key string @[required]
+}
+
+fn is_daemon() bool {
+	return os.args[0] == service_name
 }
 
 fn process_domain(api porkbun.Api, ip_address string, mut logger logging.Logger) {
@@ -39,7 +45,7 @@ fn process_domain(api porkbun.Api, ip_address string, mut logger logging.Logger)
 		return
 	}
 
-	logger.info('IP addresses are different. Updating')
+	logger.info('New IP address is ${ip_address}')
 	api.edit_record(record.get_id(), record.get_type(), ip_address) or {
 		logger.die('Failed to update IP address. Reason: ${err}')
 	}
@@ -58,11 +64,17 @@ fn read_config_file(config_file string, mut logger logging.Logger) Config {
 	return config
 }
 
+fn get_ip_address(api porkbun.Api, mut logger logging.Logger) string {
+		logger.info('Fetching public IP address')
+		ip_address := api.ping() or {
+			logger.die('Failed to get IP address. Reason: ${err}')
+		}
+		return ip_address
+}
+
 fn run_application(cmd cli.Command) ! {
 	config_file := cmd.flags.get_string('config-file')!
-	mut ip_address := cmd.flags.get_string('ip')!
 	log_file := cmd.flags.get_string('log')!
-
 	mut logger := logging.Logger.default_logger()
 
 	if log_file != '' {
@@ -78,14 +90,22 @@ fn run_application(cmd cli.Command) ! {
 		config.secret_api_key
 	)
 
-	if ip_address == '' {
-		logger.info('Fetching public IP address')
-		ip_address = api.ping() or {
-			logger.die('Failed to get IP address. Reason: ${err}')
+	if !is_daemon() {
+		mut ip_address := cmd.flags.get_string('ip')!
+		
+		if ip_address == '' {
+			ip_address = get_ip_address(api, mut logger)
+		}
+
+		process_domain(api, ip_address, mut logger)
+	} else {
+		duration := time.Duration(10 * time.minute)
+		for {
+			ip_address := get_ip_address(api, mut logger) 
+			process_domain(api, ip_address, mut logger)
+			time.sleep(duration)
 		}
 	}
-
-	process_domain(api, ip_address, mut logger)
 }
 
 fn main() {
@@ -111,13 +131,15 @@ fn main() {
 		description: 'Path to config file'
 	})
 
-	app.add_flag(cli.Flag{
-		flag: .string
-		required: false
-		name: 'ip'
-		description: 'Bypass IP address lookup and set IP to option provided'
-		default_value: ['']
-	})
+	if !is_daemon() {
+		app.add_flag(cli.Flag{
+			flag: .string
+			required: false
+			name: 'ip'
+			description: 'Bypass IP address lookup and set IP to option provided'
+			default_value: ['']
+		})
+	}
 
 	app.add_flag(cli.Flag{
 		flag: .string
