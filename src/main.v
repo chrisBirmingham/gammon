@@ -115,7 +115,7 @@ fn main() {
 	}
 
 	mut app := cli.Command{
-		name: mod.name
+		name: argv[0]
 		description: mod.description
 		execute: run_application
 		posix_mode: true
