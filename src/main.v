@@ -18,7 +18,7 @@ struct Config {
 }
 
 fn is_daemon() bool {
-	return os.args[0] == service_name
+	return os.args[0].contains(service_name)
 }
 
 fn process_domain(api porkbun.Api, ip_address string, mut logger logging.Logger) {
