@@ -52,7 +52,7 @@ fn process_domain(api porkbun.Api, ip_address string, logger logging.Logger) {
 	logger.info('Successfully updated IP address')
 }
 
-fn read_config_file(config_file string, mut logger logging.Logger) Config {
+fn read_config_file(config_file string, logger logging.Logger) Config {
 	config_str := os.read_file(config_file) or {
 		logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
 	}
@@ -78,7 +78,7 @@ fn run_application(cmd cli.Command) ! {
   // Always default logger to stdout
   mut logger := logging.Logger.stdout();
 
-	config := read_config_file(config_file, mut logger)
+	config := read_config_file(config_file, logger)
 
 	api := porkbun.Api.new(
 		config.domain,
@@ -90,16 +90,16 @@ fn run_application(cmd cli.Command) ! {
 		mut ip_address := cmd.flags.get_string('ip')!
 		
 		if ip_address == '' {
-			ip_address = get_ip_address(api, mut logger)
+			ip_address = get_ip_address(api, logger)
 		}
 
-		process_domain(api, ip_address, mut logger)
+		process_domain(api, ip_address, logger)
 	} else {
 		logger = logging.Logger.syslog(service_name)
 		duration := time.Duration(10 * time.minute)
 		for {
-			ip_address := get_ip_address(api, mut logger) 
-			process_domain(api, ip_address, mut logger)
+			ip_address := get_ip_address(api, logger) 
+			process_domain(api, ip_address, logger)
 			time.sleep(duration)
 		}
 	}

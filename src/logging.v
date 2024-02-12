@@ -1,6 +1,5 @@
 module logging
 
-import time
 import vseryakov.syslog
 
 const exit_failure = 1
@@ -11,7 +10,7 @@ interface LogHandler {
 
 struct StdoutHandler {}
 
-fn (mut s StdoutHandler) write(message string, error bool) {
+fn (s StdoutHandler) write(message string, error bool) {
 	if error {
 		eprintln(message)
 	} else {
@@ -26,8 +25,8 @@ fn SyslogHandler.new(prog_name string) SyslogHandler {
 	return SyslogHandler{}
 }
 
-fn (mut s SyslogHandler) write(message string, error bool) {
-	level := if error { syslog.log_error } else { syslog.log_info }
+fn (s SyslogHandler) write(message string, error bool) {
+	level := if error { syslog.log_err } else { syslog.log_info }
 	syslog.log(level, message)
 }
 
