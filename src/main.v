@@ -76,11 +76,8 @@ fn run_application(cmd cli.Command) ! {
 	config_file := cmd.flags.get_string('config-file')!
 	log_file := cmd.flags.get_string('log')!
 
-	mut logger := if log_file != '' {
-		logging.Logger.file(log_file)
-	} else {
-		logging.Logger.stdout()
-	}
+  // Always default logger to stdout
+  mut logger := logging.Logger.stdout();
 
 	config := read_config_file(config_file, mut logger)
 
@@ -91,6 +88,10 @@ fn run_application(cmd cli.Command) ! {
 	)
 
 	if !is_daemon() {
+    if log_file != '' {
+      logger = logging.Logger.file(log_file)
+    }
+
 		mut ip_address := cmd.flags.get_string('ip')!
 		
 		if ip_address == '' {
@@ -99,6 +100,7 @@ fn run_application(cmd cli.Command) ! {
 
 		process_domain(api, ip_address, mut logger)
 	} else {
+    logger = logging.Logger.syslog(service_name)
 		duration := time.Duration(10 * time.minute)
 		for {
 			ip_address := get_ip_address(api, mut logger) 

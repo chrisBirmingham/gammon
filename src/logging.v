@@ -2,6 +2,7 @@ module logging
 
 import os
 import time
+import vseryakov.syslog
 
 const exit_failure = 1
 
@@ -33,6 +34,17 @@ fn (mut f FileHandler) write(message string) {
 	}
 }
 
+struct SyslogHandler {}
+
+fn SyslogHandler.new(prog_name string) SyslogHandler {
+  syslog.open(prog_name, syslog.log_pid, syslog.log_user)
+  return SyslogHandler{}
+}
+
+fn (mut s SyslogHandler) write(message string) {
+  syslog.info(message)
+}
+
 pub struct Logger {
 	mut: handler LogHandler
 }
@@ -43,6 +55,10 @@ pub fn Logger.stdout() Logger {
 
 pub fn Logger.file(file_path string) Logger {
 	return Logger{FileHandler.new(file_path)}
+}
+
+pub fn Logger.syslog(prog_name string) Logger {
+  return Logger{SyslogHandler.new(prog_name)}
 }
 
 pub fn (mut l Logger) info(message string) {
