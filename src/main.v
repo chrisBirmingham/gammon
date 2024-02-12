@@ -21,7 +21,7 @@ fn is_daemon() bool {
 	return os.args[0].contains(service_name)
 }
 
-fn process_domain(api porkbun.Api, ip_address string, mut logger logging.Logger) {
+fn process_domain(api porkbun.Api, ip_address string, logger logging.Logger) {
 	logger.info('Retrieving A DNS record')
 	records := api.retrieve_records('A') or {
 		logger.die('Failed to retrive Domain A record. Reason: ${err}')
@@ -64,7 +64,7 @@ fn read_config_file(config_file string, mut logger logging.Logger) Config {
 	return config
 }
 
-fn get_ip_address(api porkbun.Api, mut logger logging.Logger) string {
+fn get_ip_address(api porkbun.Api, logger logging.Logger) string {
 		logger.info('Fetching public IP address')
 		ip_address := api.ping() or {
 			logger.die('Failed to get IP address. Reason: ${err}')
@@ -74,7 +74,6 @@ fn get_ip_address(api porkbun.Api, mut logger logging.Logger) string {
 
 fn run_application(cmd cli.Command) ! {
 	config_file := cmd.flags.get_string('config-file')!
-	log_file := cmd.flags.get_string('log')!
 
   // Always default logger to stdout
   mut logger := logging.Logger.stdout();
@@ -88,10 +87,6 @@ fn run_application(cmd cli.Command) ! {
 	)
 
 	if !is_daemon() {
-    if log_file != '' {
-      logger = logging.Logger.file(log_file)
-    }
-
 		mut ip_address := cmd.flags.get_string('ip')!
 		
 		if ip_address == '' {
@@ -100,7 +95,7 @@ fn run_application(cmd cli.Command) ! {
 
 		process_domain(api, ip_address, mut logger)
 	} else {
-    logger = logging.Logger.syslog(service_name)
+		logger = logging.Logger.syslog(service_name)
 		duration := time.Duration(10 * time.minute)
 		for {
 			ip_address := get_ip_address(api, mut logger) 
@@ -142,15 +137,6 @@ fn main() {
 			default_value: ['']
 		})
 	}
-
-	app.add_flag(cli.Flag{
-		flag: .string
-		required: false
-		name: 'log'
-		abbrev: 'l'
-		description: 'Specify log file to write too'
-		default_value: ['']
-	})
 
 	app.setup()
 	app.parse(os.args)
