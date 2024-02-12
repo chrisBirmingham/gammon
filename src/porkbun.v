@@ -82,7 +82,7 @@ pub fn Api.new(domain string, api_key string, secret_api_key string) Api {
 
 fn (a Api) get_error_response(body string) string {
 	err_response := json.decode(ErrorResponse, body) or {
-		panic('Failed to decode error response ${err}')
+		error('Invalid error response from API. ${err}')
 	}
 
 	return err_response.message
@@ -96,7 +96,10 @@ fn (a Api) send_request(endpoint string, body string) !string {
 	}
 
 	if res.status_code != 200 {
-		error('Non 200 status code returned. Status: ${res.status_code}. Message: ${a.get_error_response(res.body)}')
+		message := a.get_error_response(res.body) or {
+			return err
+		}
+		error('Non 200 status code returned. Status: ${res.status_code}. Message: ${message}')
 	}
 
 	return res.body

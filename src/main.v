@@ -65,11 +65,11 @@ fn read_config_file(config_file string, logger logging.Logger) Config {
 }
 
 fn get_ip_address(api porkbun.Api, logger logging.Logger) string {
-		logger.info('Fetching public IP address')
-		ip_address := api.ping() or {
-			logger.die('Failed to get IP address. Reason: ${err}')
-		}
-		return ip_address
+	logger.info('Fetching public IP address')
+	ip_address := api.ping() or {
+		logger.die('Failed to get IP address. Reason: ${err}')
+	}
+	return ip_address
 }
 
 fn run_application(cmd cli.Command) ! {
