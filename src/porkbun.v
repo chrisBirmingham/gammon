@@ -80,9 +80,9 @@ pub fn Api.new(domain string, api_key string, secret_api_key string) Api {
 	return Api{domain, api_key, secret_api_key}
 }
 
-fn (a Api) get_error_response(body string) string {
+fn (a Api) get_error_response(body string) !string {
 	err_response := json.decode(ErrorResponse, body) or {
-		error('Invalid error response from API. ${err}')
+		return error('Invalid error response from API. ${err}')
 	}
 
 	return err_response.message
