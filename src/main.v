@@ -83,7 +83,7 @@ fn (a App) get_ip_address() string {
 }
 
 fn run_application(cmd cli.Command) ! {
-  logger := if is_daemon() {
+	logger := if is_daemon() {
 			logging.Logger.syslog(service_name)
 		} else {
 			logging.Logger.stdout()
@@ -91,6 +91,10 @@ fn run_application(cmd cli.Command) ! {
 
 	config_file := cmd.flags.get_string('config-file')!
 	config := read_config_file(config_file, logger)
+
+	// If test is supplied and we've gotten to this point, the config is "valid"
+	test := cmd.flags.get_bool('test')!
+	if test { return }
 
 	api := porkbun.Api.new(
 		config.domain,
@@ -140,6 +144,15 @@ fn main() {
 		name: 'config-file'
 		abbrev: 'c'
 		description: 'Path to config file'
+	})
+
+	app.add_flag(cli.Flag{
+		flag: .bool
+		required: false
+		name: 'test'
+		abbrev: 't'
+		description: 'Checks the validity of the provided config file'
+		default_value: ['false']
 	})
 
 	if !is_daemon() {
