@@ -18,67 +18,81 @@ struct Config {
 }
 
 fn is_daemon() bool {
-	return os.args[0].contains(service_name)
+	prog := os.base(os.args[0])
+	return prog == service_name
 }
 
-fn process_domain(api porkbun.Api, ip_address string, logger logging.Logger) {
-	logger.info('Retrieving A DNS record')
-	records := api.retrieve_records('A') or {
-		logger.die('Failed to retrive Domain A record. Reason: ${err}')
+struct App {
+	api porkbun.Api
+	logger logging.Logger
+}
+
+fn App.new(api porkbun.Api, logger logging.Logger) App {
+	return App{api, logger}
+}
+
+fn (a App) process_domain(ip_address string) {
+	a.logger.info('Retrieving A DNS record')
+	records := a.api.retrieve_records('A') or {
+		a.logger.die('Failed to retrive Domain A record. Reason: ${err}')
 	}
 
 	if records.len > 1 {
-		logger.die('Found more than one A record for domain. Exiting')
+		a.logger.die('Found more than one A record for domain. Exiting')
 	}
 
 	record := records[0] or {
-		logger.info("A record doesn't exist. Creating")
-		api.create_record('A', ip_address) or {
-			logger.die('Failed to create new A record. Reason: ${err}')
+		a.logger.info("A record doesn't exist. Creating")
+		a.api.create_record('A', ip_address) or {
+			a.logger.die('Failed to create new A record. Reason: ${err}')
 		}
-		logger.info('Successfully created A record')
+		a.logger.info('Successfully created A record')
 		return
 	}
 
 	if ip_address == record.get_ip_address() {
-		logger.info('Current IP address and stored IP address match. Skipping update')
+		a.logger.info('Current IP address and stored IP address match. Skipping update')
 		return
 	}
 
-	logger.info('New IP address is ${ip_address}')
-	api.edit_record(record.get_id(), record.get_type(), ip_address) or {
-		logger.die('Failed to update IP address. Reason: ${err}')
+	a.logger.info('New IP address is ${ip_address}')
+	a.api.edit_record(record.get_id(), record.get_type(), ip_address) or {
+		a.logger.die('Failed to update IP address. Reason: ${err}')
 	}
-	logger.info('Successfully updated IP address')
+	a.logger.info('Successfully updated IP address')
 }
 
-fn read_config_file(config_file string, logger logging.Logger) Config {
+fn (a App) read_config_file(config_file string) Config {
 	config_str := os.read_file(config_file) or {
-		logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
+		a.logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
 	}
 
 	config := json.decode(Config, config_str) or {
-		logger.die('Invalid config file provided. Reason: ${err}')
+		a.logger.die('Invalid config file provided. Reason: ${err}')
 	}
 
 	return config
 }
 
-fn get_ip_address(api porkbun.Api, logger logging.Logger) string {
-	logger.info('Fetching public IP address')
-	ip_address := api.ping() or {
-		logger.die('Failed to get IP address. Reason: ${err}')
+fn (a App) get_ip_address() string {
+	a.logger.info('Fetching public IP address')
+	ip_address := a.api.ping() or {
+		a.logger.die('Failed to get IP address. Reason: ${err}')
 	}
 	return ip_address
 }
 
 fn run_application(cmd cli.Command) ! {
+	mut logger := if (is_daemon()) {
+			logging.Logger.syslog(service_name)
+		} else {
+			logging.Logger.stdout();
+		}
+
+	app := App.new(api, logger)
+
 	config_file := cmd.flags.get_string('config-file')!
-
-  // Always default logger to stdout
-  mut logger := logging.Logger.stdout();
-
-	config := read_config_file(config_file, logger)
+	config := app.read_config_file(config_file)
 
 	api := porkbun.Api.new(
 		config.domain,
@@ -90,16 +104,16 @@ fn run_application(cmd cli.Command) ! {
 		mut ip_address := cmd.flags.get_string('ip')!
 		
 		if ip_address == '' {
-			ip_address = get_ip_address(api, logger)
+			ip_address = app.get_ip_address()
 		}
 
-		process_domain(api, ip_address, logger)
+		app.process_domain(ip_address)
 	} else {
-		logger = logging.Logger.syslog(service_name)
 		duration := time.Duration(10 * time.minute)
+
 		for {
-			ip_address := get_ip_address(api, logger) 
-			process_domain(api, ip_address, logger)
+			ip_address := app.get_ip_address()
+			app.process_domain(ip_address)
 			time.sleep(duration)
 		}
 	}
