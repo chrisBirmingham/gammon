@@ -62,13 +62,13 @@ fn (a App) process_domain(ip_address string) {
 	a.logger.info('Successfully updated IP address')
 }
 
-fn (a App) read_config_file(config_file string) Config {
+fn read_config_file(config_file string, logger logging.Logger) Config {
 	config_str := os.read_file(config_file) or {
-		a.logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
+		logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
 	}
 
 	config := json.decode(Config, config_str) or {
-		a.logger.die('Invalid config file provided. Reason: ${err}')
+		logger.die('Invalid config file provided. Reason: ${err}')
 	}
 
 	return config
@@ -83,22 +83,22 @@ fn (a App) get_ip_address() string {
 }
 
 fn run_application(cmd cli.Command) ! {
-	mut logger := if (is_daemon()) {
+  logger := if is_daemon() {
 			logging.Logger.syslog(service_name)
 		} else {
-			logging.Logger.stdout();
+			logging.Logger.stdout()
 		}
 
-	app := App.new(api, logger)
-
 	config_file := cmd.flags.get_string('config-file')!
-	config := app.read_config_file(config_file)
+	config := read_config_file(config_file, logger)
 
 	api := porkbun.Api.new(
 		config.domain,
 		config.api_key,
 		config.secret_api_key
 	)
+
+	app := App.new(api, logger)
 
 	if !is_daemon() {
 		mut ip_address := cmd.flags.get_string('ip')!
