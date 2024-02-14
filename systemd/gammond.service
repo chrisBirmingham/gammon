@@ -1,0 +1,11 @@
+[Unit]
+Description=Porkbun DDNS Service
+
+[Service]
+Type=simple 
+ExecStartPre=/usr/local/bin/gammon -t -c /etc/gammon.json
+ExecStart=/usr/local/bin/gammond -c /etc/gammon.json
+
+[Install]
+WantedBy=multi-user.target
+Alias=gammond.service

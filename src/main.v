@@ -5,9 +5,11 @@ import json
 import logging
 import os
 import porkbun
+import time
 import v.vmod
 
 const exit_failure = 1
+const service_name = 'gammond'
 
 struct Config {
 	domain string @[required]
@@ -15,38 +17,60 @@ struct Config {
 	secret_api_key string @[required]
 }
 
-fn process_domain(api porkbun.Api, ip_address string, mut logger logging.Logger) {
-	logger.info('Retrieving A DNS record')
-	records := api.retrieve_records('A') or {
-		logger.die('Failed to retrive Domain A record. Reason: ${err}')
+fn is_daemon() bool {
+	prog := os.base(os.args[0])
+	return prog == service_name
+}
+
+struct App {
+	api porkbun.Api
+	logger logging.Logger
+}
+
+fn App.new(api porkbun.Api, logger logging.Logger) App {
+	return App{api, logger}
+}
+
+fn (a App) process_domain(ip_address string) {
+	a.logger.info('Retrieving A DNS record')
+	records := a.api.retrieve_records('A') or {
+		a.logger.die('Failed to retrive Domain A record. Reason: ${err}')
 	}
 
 	if records.len > 1 {
-		logger.die('Found more than one A record for domain. Exiting')
+		a.logger.die('Found more than one A record for domain. Exiting')
 	}
 
 	record := records[0] or {
-		logger.info("A record doesn't exist. Creating")
-		api.create_record('A', ip_address) or {
-			logger.die('Failed to create new A record. Reason: ${err}')
+		a.logger.info("A record doesn't exist. Creating")
+		a.api.create_record('A', ip_address) or {
+			a.logger.die('Failed to create new A record. Reason: ${err}')
 		}
-		logger.info('Successfully created A record')
+		a.logger.info('Successfully created A record')
 		return
 	}
 
 	if ip_address == record.get_ip_address() {
-		logger.info('Current IP address and stored IP address match. Skipping update')
+		a.logger.info('Current IP address and stored IP address match. Skipping update')
 		return
 	}
 
-	logger.info('IP addresses are different. Updating')
-	api.edit_record(record.get_id(), record.get_type(), ip_address) or {
-		logger.die('Failed to update IP address. Reason: ${err}')
+	a.logger.info('New IP address is ${ip_address}')
+	a.api.edit_record(record.get_id(), record.get_type(), ip_address) or {
+		a.logger.die('Failed to update IP address. Reason: ${err}')
 	}
-	logger.info('Successfully updated IP address')
+	a.logger.info('Successfully updated IP address')
 }
 
-fn read_config_file(config_file string, mut logger logging.Logger) Config {
+fn (a App) get_ip_address() string {
+	a.logger.info('Fetching public IP address')
+	ip_address := a.api.ping() or {
+		a.logger.die('Failed to get IP address. Reason: ${err}')
+	}
+	return ip_address
+}
+
+fn read_config_file(config_file string, logger logging.Logger) Config {
 	config_str := os.read_file(config_file) or {
 		logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
 	}
@@ -59,18 +83,21 @@ fn read_config_file(config_file string, mut logger logging.Logger) Config {
 }
 
 fn run_application(cmd cli.Command) ! {
+	logger := if is_daemon() {
+			logging.Logger.syslog(service_name)
+		} else {
+			logging.Logger.stdout()
+		}
+
 	config_file := cmd.flags.get_string('config-file')!
-	mut ip_address := cmd.flags.get_string('ip')!
-	log_file := cmd.flags.get_string('log')!
+	config := read_config_file(config_file, logger)
 
-	mut logger := logging.Logger.default_logger()
-
-	if log_file != '' {
-		file_handler := logging.FileHandler.new(log_file)
-		logger.add_handler(file_handler)
+	// If test is supplied and we've gotten to this point, the config is "valid"
+	test := cmd.flags.get_bool('test')!
+	if test {
+		logger.info('Config is valid')
+		return
 	}
-
-	config := read_config_file(config_file, mut logger)
 
 	api := porkbun.Api.new(
 		config.domain,
@@ -78,14 +105,25 @@ fn run_application(cmd cli.Command) ! {
 		config.secret_api_key
 	)
 
-	if ip_address == '' {
-		logger.info('Fetching public IP address')
-		ip_address = api.ping() or {
-			logger.die('Failed to get IP address. Reason: ${err}')
+	app := App.new(api, logger)
+
+	if !is_daemon() {
+		mut ip_address := cmd.flags.get_string('ip')!
+		
+		if ip_address == '' {
+			ip_address = app.get_ip_address()
+		}
+
+		app.process_domain(ip_address)
+	} else {
+		duration := time.Duration(10 * time.minute)
+
+		for {
+			ip_address := app.get_ip_address()
+			app.process_domain(ip_address)
+			time.sleep(duration)
 		}
 	}
-
-	process_domain(api, ip_address, mut logger)
 }
 
 fn main() {
@@ -95,7 +133,7 @@ fn main() {
 	}
 
 	mut app := cli.Command{
-		name: mod.name
+		name: os.args[0]
 		description: mod.description
 		execute: run_application
 		posix_mode: true
@@ -112,21 +150,23 @@ fn main() {
 	})
 
 	app.add_flag(cli.Flag{
-		flag: .string
+		flag: .bool
 		required: false
-		name: 'ip'
-		description: 'Bypass IP address lookup and set IP to option provided'
-		default_value: ['']
+		name: 'test'
+		abbrev: 't'
+		description: 'Checks the validity of the provided config file'
+		default_value: ['false']
 	})
 
-	app.add_flag(cli.Flag{
-		flag: .string
-		required: false
-		name: 'log'
-		abbrev: 'l'
-		description: 'Specify log file to write too'
-		default_value: ['']
-	})
+	if !is_daemon() {
+		app.add_flag(cli.Flag{
+			flag: .string
+			required: false
+			name: 'ip'
+			description: 'Bypass IP address lookup and set IP to option provided'
+			default_value: ['']
+		})
+	}
 
 	app.setup()
 	app.parse(os.args)

@@ -15,7 +15,7 @@ struct StatusResponse {
 }
 
 struct ErrorResponse {
-	status Status @[required]
+	StatusResponse
 	message string @[required]
 }
 
@@ -25,7 +25,7 @@ struct AuthRequest {
 }
 
 struct PingResponse {
-	status Status @[required]
+	StatusResponse
 	ip string @[json: 'yourIp'; required]
 }
 
@@ -52,7 +52,7 @@ pub fn (d DnsRecord) get_ip_address() string {
 }
 
 struct RetrieveResponse {
-	status Status @[required]
+	StatusResponse
 	records []DnsRecord @[required]
 }
 
@@ -80,23 +80,26 @@ pub fn Api.new(domain string, api_key string, secret_api_key string) Api {
 	return Api{domain, api_key, secret_api_key}
 }
 
-fn (a Api) get_error_response(body string) string {
+fn (a Api) get_error_response(body string) !string {
 	err_response := json.decode(ErrorResponse, body) or {
-		panic('Failed to decode error response ${err}')
+		return error('Invalid error response from API. ${err}')
 	}
 
 	return err_response.message
 }
 
 fn (a Api) send_request(endpoint string, body string) !string {
-	url := '${api_url}/${endpoint}'
+	url := '${porkbun.api_url}/${endpoint}'
 
 	res := http.post_json(url, body) or {
 		return error('Failed to contact api endpoint ${err}')
 	}
 
 	if res.status_code != 200 {
-		error('Non 200 status code returned. Status: ${res.status_code}. Message: ${a.get_error_response(res.body)}')
+		message := a.get_error_response(res.body) or {
+			return err
+		}
+		error('Non 200 status code returned. Status: ${res.status_code}. Message: ${message}')
 	}
 
 	return res.body
