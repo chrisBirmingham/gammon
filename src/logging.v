@@ -49,5 +49,5 @@ pub fn (l Logger) info(message string) {
 @[noreturn]
 pub fn (l Logger) die(message string) {
 	l.handler.write(message, true)
-	exit(exit_failure)
+	exit(logging.exit_failure)
 }

@@ -15,7 +15,7 @@ struct StatusResponse {
 }
 
 struct ErrorResponse {
-	status Status @[required]
+	StatusResponse
 	message string @[required]
 }
 
@@ -25,7 +25,7 @@ struct AuthRequest {
 }
 
 struct PingResponse {
-	status Status @[required]
+	StatusResponse
 	ip string @[json: 'yourIp'; required]
 }
 
@@ -52,7 +52,7 @@ pub fn (d DnsRecord) get_ip_address() string {
 }
 
 struct RetrieveResponse {
-	status Status @[required]
+	StatusResponse
 	records []DnsRecord @[required]
 }
 
@@ -89,7 +89,7 @@ fn (a Api) get_error_response(body string) !string {
 }
 
 fn (a Api) send_request(endpoint string, body string) !string {
-	url := '${api_url}/${endpoint}'
+	url := '${porkbun.api_url}/${endpoint}'
 
 	res := http.post_json(url, body) or {
 		return error('Failed to contact api endpoint ${err}')

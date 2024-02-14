@@ -94,7 +94,10 @@ fn run_application(cmd cli.Command) ! {
 
 	// If test is supplied and we've gotten to this point, the config is "valid"
 	test := cmd.flags.get_bool('test')!
-	if test { return }
+	if test {
+		logger.info('Config is valid')
+		return
+	}
 
 	api := porkbun.Api.new(
 		config.domain,
