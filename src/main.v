@@ -62,6 +62,14 @@ fn (a App) process_domain(ip_address string) {
 	a.logger.info('Successfully updated IP address')
 }
 
+fn (a App) get_ip_address() string {
+	a.logger.info('Fetching public IP address')
+	ip_address := a.api.ping() or {
+		a.logger.die('Failed to get IP address. Reason: ${err}')
+	}
+	return ip_address
+}
+
 fn read_config_file(config_file string, logger logging.Logger) Config {
 	config_str := os.read_file(config_file) or {
 		logger.die("Counldn't open config file ${config_file}. Reason: ${err}")
@@ -72,14 +80,6 @@ fn read_config_file(config_file string, logger logging.Logger) Config {
 	}
 
 	return config
-}
-
-fn (a App) get_ip_address() string {
-	a.logger.info('Fetching public IP address')
-	ip_address := a.api.ping() or {
-		a.logger.die('Failed to get IP address. Reason: ${err}')
-	}
-	return ip_address
 }
 
 fn run_application(cmd cli.Command) ! {
