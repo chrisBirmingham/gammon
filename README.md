@@ -4,13 +4,7 @@ A dynamic DNS client for updating Porkbun DNS records.
 
 ## Installation
 
-V doesn't seem to have support for installing dependencies specified in your v.mod yet so first you'll need to install the syslog lib from vpm.
-
-```commandline
-v install vseryakov.syslog
-```
-
-Then run:
+To install run:
 
 ```commandline
 git clone https://github.com/chrisBirmingham/gammon

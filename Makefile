@@ -8,6 +8,7 @@ INSTALL_DIR=/usr/local/bin
 all: $(EXE)
 
 $(EXE): $(SRC)
+	v install --once
 	v . -prod
 
 install: $(EXE)
